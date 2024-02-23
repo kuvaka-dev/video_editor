@@ -267,7 +267,7 @@ class ThumbnailSliderPrinter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(TrimSliderPainter oldDelegate) =>
+  bool shouldRepaint(ThumbnailSliderPrinter oldDelegate) =>
       oldDelegate.rect != rect ||
       oldDelegate.position != position ||
       oldDelegate.style != style ||
@@ -275,5 +275,5 @@ class ThumbnailSliderPrinter extends CustomPainter {
       oldDelegate.isTrimmed != isTrimmed;
 
   @override
-  bool shouldRebuildSemantics(TrimSliderPainter oldDelegate) => false;
+  bool shouldRebuildSemantics(ThumbnailSliderPrinter oldDelegate) => false;
 }
