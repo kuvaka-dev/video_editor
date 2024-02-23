@@ -585,7 +585,7 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
                   return RepaintBoundary(
                     child: CustomPaint(
                       size: Size.fromHeight(widget.height),
-                      painter: TrimSliderPainter(
+                      painter: ThumbnailSliderPrinter(
                         _rect,
                         getVideoPosition(),
                         widget.indicatorHeight,
