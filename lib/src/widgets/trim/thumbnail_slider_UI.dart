@@ -23,7 +23,7 @@ class ThumbnailSliderUI extends StatefulWidget {
     this.hasHaptic = true,
     this.maxViewportRatio = 2.5,
     this.scrollController,
-    required this.indicatorHeight,
+    required this.updateWidth,
   });
 
   /// The [controller] param is mandatory so every change in the controller settings will propagate in the trim slider view
@@ -34,6 +34,7 @@ class ThumbnailSliderUI extends StatefulWidget {
   /// Defaults to `60`
   final double height;
   final double width;
+  final Function(double) updateWidth;
 
   /// The [horizontalMargin] param specifies the horizontal space to set around the slider.
   /// It is important when the trim can be dragged (`controller.maxDuration` < `controller.videoDuration`)
@@ -61,7 +62,7 @@ class ThumbnailSliderUI extends StatefulWidget {
   //// The [scrollController] param specifies the scroll controller to use for the trim slider view
   final ScrollController? scrollController;
   //// Indicator Height
-  final double indicatorHeight;
+
   @override
   State<ThumbnailSliderUI> createState() => ThumbnailSliderUIState();
 }
@@ -444,6 +445,7 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
           Offset(widget.controller.minTrim * fullLayoutWidth, 0.0),
           Offset(widget.controller.maxTrim * fullLayoutWidth, widget.height),
         ).shift(Offset(_horizontalMargin, 0));
+        widget.updateWidth(fullLayoutWidth);
       }
     });
 
@@ -581,137 +583,89 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
         _createTrimRect();
       }
 
-      return showSizeChanger
-          ? GestureDetector(
+      return SizedBox(
+          width: fullLayoutWidth,
+          child: Stack(children: [
+            GestureDetector(
               onTap: () {
                 setState(() {
-                  showSizeChanger = false;
+                  showSizeChanger = !showSizeChanger;
                 });
               },
-              child: SizedBox(
-                  width: fullLayoutWidth,
-                  child: Stack(children: [
-                    NotificationListener<ScrollNotification>(
-                      onNotification: (scrollNotification) {
-                        if (_boundary == null) {
-                          if (scrollNotification is ScrollStartNotification) {
-                            _updateControllerIsTrimming(true);
-                          } else if (scrollNotification
-                              is ScrollEndNotification) {
-                            _onHorizontalDragEnd();
-                          }
-                        }
-                        return true;
-                      },
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        physics: const BouncingScrollPhysics(),
-                        scrollDirection: Axis.horizontal,
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: _horizontalMargin),
-                          child: Column(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(
-                                  widget.controller.trimStyle.borderRadius,
-                                ),
-                                child: SizedBox(
-                                  height: widget.height,
-                                  width: fullLayoutWidth,
-                                  child: ThumbnailSlider(
-                                    controller: widget.controller,
-                                    height: widget.height,
-                                  ),
-                                ),
-                              ),
-                              if (widget.child != null)
-                                SizedBox(
-                                    width: fullLayoutWidth, child: widget.child)
-                            ],
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (scrollNotification) {
+                  if (_boundary == null) {
+                    if (scrollNotification is ScrollStartNotification) {
+                      _updateControllerIsTrimming(true);
+                    } else if (scrollNotification is ScrollEndNotification) {
+                      _onHorizontalDragEnd();
+                    }
+                  }
+                  return true;
+                },
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  scrollDirection: Axis.horizontal,
+                  child: Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: _horizontalMargin),
+                    child: Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            widget.controller.trimStyle.borderRadius,
                           ),
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onHorizontalDragStart: _onHorizontalDragStart,
-                      onHorizontalDragUpdate: _onHorizontalDragUpdate,
-                      onHorizontalDragEnd: _onHorizontalDragEnd,
-                      behavior: HitTestBehavior.opaque,
-                      child: AnimatedBuilder(
-                        animation: Listenable.merge([
-                          widget.controller,
-                          widget.controller.video,
-                        ]),
-                        builder: (_, __) {
-                          return RepaintBoundary(
-                            child: CustomPaint(
-                              size: Size.fromHeight(widget.height),
-                              painter: ThumbnailSliderPrinter(
-                                _rect,
-                                getVideoPosition(),
-                                widget.controller.trimStyle,
-                                isTrimming: widget.controller.isTrimming,
-                                isTrimmed: widget.controller.isTrimmed,
-                              ),
+                          child: SizedBox(
+                            height: widget.height,
+                            width: fullLayoutWidth,
+                            child: ThumbnailSlider(
+                              controller: widget.controller,
+                              height: widget.height,
                             ),
-                          );
-                        },
-                      ),
-                    )
-                  ])))
-          : GestureDetector(
-              onTap: () {
-                setState(() {
-                  showSizeChanger = true;
-                });
-              },
-              child: SizedBox(
-                  width: fullLayoutWidth,
-                  child: Stack(children: [
-                    NotificationListener<ScrollNotification>(
-                      onNotification: (scrollNotification) {
-                        if (_boundary == null) {
-                          if (scrollNotification is ScrollStartNotification) {
-                            _updateControllerIsTrimming(true);
-                          } else if (scrollNotification
-                              is ScrollEndNotification) {
-                            _onHorizontalDragEnd();
-                          }
-                        }
-                        return true;
-                      },
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        physics: const BouncingScrollPhysics(),
-                        scrollDirection: Axis.horizontal,
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: _horizontalMargin),
-                          child: Column(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(
-                                  widget.controller.trimStyle.borderRadius,
-                                ),
-                                child: SizedBox(
-                                  height: widget.height,
-                                  width: fullLayoutWidth,
-                                  child: ThumbnailSlider(
-                                    controller: widget.controller,
-                                    height: widget.height,
-                                  ),
-                                ),
-                              ),
-                              if (widget.child != null)
-                                SizedBox(
-                                    width: fullLayoutWidth, child: widget.child)
-                            ],
                           ),
                         ),
-                      ),
+                        if (widget.child != null)
+                          SizedBox(width: fullLayoutWidth, child: widget.child)
+                      ],
                     ),
-                  ])));
+                  ),
+                ),
+              ),
+            ),
+            showSizeChanger
+                ? GestureDetector(
+                    onHorizontalDragStart: _onHorizontalDragStart,
+                    onHorizontalDragUpdate: _onHorizontalDragUpdate,
+                    onHorizontalDragEnd: _onHorizontalDragEnd,
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      setState(() {
+                        showSizeChanger = !showSizeChanger;
+                      });
+                    },
+                    child: AnimatedBuilder(
+                      animation: Listenable.merge([
+                        widget.controller,
+                        widget.controller.video,
+                      ]),
+                      builder: (_, __) {
+                        return RepaintBoundary(
+                          child: CustomPaint(
+                            size: Size.fromHeight(widget.height),
+                            painter: ThumbnailSliderPainter(
+                              _rect,
+                              getVideoPosition(),
+                              widget.controller.trimStyle,
+                              isTrimming: widget.controller.isTrimming,
+                              isTrimmed: widget.controller.isTrimmed,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  )
+                : SizedBox.shrink()
+          ]));
     });
   }
 }
