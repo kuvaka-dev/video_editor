@@ -402,7 +402,6 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
   //----//
   void _changeTrimRect({double? left, double? width, bool updateTrim = true}) {
     left = left ?? _rect.left;
-    width = max(0, width ?? _rect.width);
 
     // if [left] and [width] params does not respect the min and max duration set in the controller
     // reduce the trimmed area to respect it
@@ -437,12 +436,15 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
     //   setState(
     //       () => _rect = Rect.fromLTWH(left!, _rect.top, width!, _rect.height));
     // }
+    double tempWidgetWidth = max(0, width ?? _rect.width);
     setState(() {
-      fullLayoutWidth = width ?? _rect.width;
-      _rect = Rect.fromPoints(
-        Offset(widget.controller.minTrim * fullLayoutWidth, 0.0),
-        Offset(widget.controller.maxTrim * fullLayoutWidth, widget.height),
-      ).shift(Offset(_horizontalMargin, 0));
+      if (tempWidgetWidth >= widget.width / 2) {
+        fullLayoutWidth = width ?? _rect.width;
+        _rect = Rect.fromPoints(
+          Offset(widget.controller.minTrim * fullLayoutWidth, 0.0),
+          Offset(widget.controller.maxTrim * fullLayoutWidth, widget.height),
+        ).shift(Offset(_horizontalMargin, 0));
+      }
     });
 
     // if left edge or right edge is touched, vibrate
