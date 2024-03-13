@@ -5,7 +5,6 @@ class ThumbnailSliderPrinter extends CustomPainter {
   const ThumbnailSliderPrinter(
     this.rect,
     this.position,
-    this.indicatorHeight,
     this.style, {
     this.isTrimming = false,
     this.isTrimmed = false,
@@ -14,7 +13,6 @@ class ThumbnailSliderPrinter extends CustomPainter {
   final Rect rect;
   final bool isTrimming, isTrimmed;
   final double position;
-  final double indicatorHeight;
   final TrimSliderStyle style;
 
   @override
@@ -93,7 +91,35 @@ class ThumbnailSliderPrinter extends CustomPainter {
     required Offset centerRight,
     required double halfLineWidth,
   }) {
-    paintIndicator(canvas, size);
+    canvas.drawPath(
+      Path.combine(
+        PathOperation.union,
+        // DRAW TOP AND BOTTOM LINES
+        Path()
+          ..addRect(Rect.fromPoints(
+            rect.topLeft,
+            rect.topRight - Offset(0.0, style.lineWidth),
+          ))
+          ..addRect(
+            Rect.fromPoints(
+              rect.bottomRight + Offset(0.0, style.lineWidth),
+              rect.bottomLeft,
+            ),
+          ),
+        // DRAW EDGES
+        getEdgesBarPath(
+          size,
+          centerLeft: centerLeft,
+          centerRight: centerRight,
+          halfLineWidth: halfLineWidth,
+        ),
+      ),
+      edges,
+    );
+
+    paintIcons(canvas, centerLeft: centerLeft, centerRight: centerRight);
+
+    // paintIndicator(canvas, size);
   }
 
   Path getEdgesBarPath(
@@ -203,23 +229,41 @@ class ThumbnailSliderPrinter extends CustomPainter {
     required Offset centerLeft,
     required Offset centerRight,
   }) {
-    paintIndicator(canvas, size);
+    // DRAW RECT BORDERS
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: rect.center,
+            width: rect.width + style.edgeWidth,
+            height: rect.height + style.edgeWidth,
+          ),
+          Radius.circular(style.borderRadius),
+        ),
+        line);
+
+    // paintIndicator(canvas, size);
+
+    // LEFT CIRCLE
+    canvas.drawCircle(centerLeft, style.edgesSize, edges);
+    // RIGHT CIRCLE
+    canvas.drawCircle(centerRight, style.edgesSize, edges);
+
+    paintIcons(canvas, centerLeft: centerLeft, centerRight: centerRight);
   }
 
   void paintIndicator(Canvas canvas, Size size) {
     final progress = Paint()
       ..color = style.positionLineColor
-      ..strokeWidth = 2;
+      ..strokeWidth = style.positionLineWidth;
 
     // DRAW VIDEO INDICATOR
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromPoints(
+          Offset(position - style.positionLineWidth / 2, -style.lineWidth * 2),
           Offset(
-              position - 1, -(indicatorHeight - (2 * (indicatorHeight / 5)))),
-          Offset(
-            position + 1,
-            2 * (indicatorHeight / 5),
+            position + style.positionLineWidth / 2,
+            size.height + style.lineWidth * 2,
           ),
         ),
         Radius.circular(style.positionLineWidth),
