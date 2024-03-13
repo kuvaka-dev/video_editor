@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:video_editor/src/models/trim_style.dart';
 
-class ThumbnailSliderPrinter extends CustomPainter {
-  const ThumbnailSliderPrinter(
+class ThumbnailSliderPainter extends CustomPainter {
+  const ThumbnailSliderPainter(
     this.rect,
     this.position,
     this.style, {
@@ -311,7 +311,7 @@ class ThumbnailSliderPrinter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(ThumbnailSliderPrinter oldDelegate) =>
+  bool shouldRepaint(ThumbnailSliderPainter oldDelegate) =>
       oldDelegate.rect != rect ||
       oldDelegate.position != position ||
       oldDelegate.style != style ||
@@ -319,5 +319,5 @@ class ThumbnailSliderPrinter extends CustomPainter {
       oldDelegate.isTrimmed != isTrimmed;
 
   @override
-  bool shouldRebuildSemantics(ThumbnailSliderPrinter oldDelegate) => false;
+  bool shouldRebuildSemantics(ThumbnailSliderPainter oldDelegate) => false;
 }
