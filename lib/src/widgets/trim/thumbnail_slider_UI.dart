@@ -288,7 +288,7 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
   //--------//
   void _onHorizontalDragStart(DragStartDetails details) {
     final pos = details.localPosition;
-    final progressTrim = _getVideoPosition();
+    final progressTrim = getVideoPosition();
 
     // Left, right and video progress indicator touch areas
     Rect leftTouch = Rect.fromCenter(
@@ -648,7 +648,7 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
                               painter: ThumbnailSliderPrinter(
                                 _rect,
                                 getVideoPosition(),
-                                widget.controller.trimStyle(),
+                                widget.controller.trimStyle,
                                 isTrimming: widget.controller.isTrimming,
                                 isTrimmed: widget.controller.isTrimmed,
                               ),
