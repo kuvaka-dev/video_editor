@@ -11,7 +11,7 @@ This library is written in Dart only but uses external packages such as [video_t
 
 > **Note**
 > If you use a version between (1.2.3 and 2.4.0) your project might be subject to a GPL license.
-
+ 
 |             | Android | iOS   |
 |-------------|---------|-------|
 | **Support** | SDK 16+ | 11.0+ |
