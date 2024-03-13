@@ -65,7 +65,7 @@ class ThumbnailSliderUI extends StatefulWidget {
 }
 
 class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
-    with AutomaticKeepAliveClientMixin<TrimSlider> {
+    with AutomaticKeepAliveClientMixin<ThumbnailSliderUI> {
   _TrimBoundaries? _boundary;
 
   /// Set to `true` if the video was playing before the gesture
