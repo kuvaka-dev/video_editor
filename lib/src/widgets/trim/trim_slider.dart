@@ -611,32 +611,32 @@ class _TrimSliderState extends State<TrimSlider>
                 ),
               ),
             ),
-            // GestureDetector(
-            //   onHorizontalDragStart: _onHorizontalDragStart,
-            //   onHorizontalDragUpdate: _onHorizontalDragUpdate,
-            //   onHorizontalDragEnd: _onHorizontalDragEnd,
-            //   behavior: HitTestBehavior.opaque,
-            //   child: AnimatedBuilder(
-            //     animation: Listenable.merge([
-            //       widget.controller,
-            //       widget.controller.video,
-            //     ]),
-            //     builder: (_, __) {
-            //       return RepaintBoundary(
-            //         child: CustomPaint(
-            //           size: Size.fromHeight(widget.height),
-            //           painter: TrimSliderPainter(
-            //             _rect,
-            //             _getVideoPosition(),
-            //             widget.controller.trimStyle,
-            //             isTrimming: widget.controller.isTrimming,
-            //             isTrimmed: widget.controller.isTrimmed,
-            //           ),
-            //         ),
-            //       );
-            //     },
-            //   ),
-            // )
+            GestureDetector(
+              onHorizontalDragStart: _onHorizontalDragStart,
+              onHorizontalDragUpdate: _onHorizontalDragUpdate,
+              onHorizontalDragEnd: _onHorizontalDragEnd,
+              behavior: HitTestBehavior.opaque,
+              child: AnimatedBuilder(
+                animation: Listenable.merge([
+                  widget.controller,
+                  widget.controller.video,
+                ]),
+                builder: (_, __) {
+                  return RepaintBoundary(
+                    child: CustomPaint(
+                      size: Size.fromHeight(widget.height),
+                      painter: TrimSliderPainter(
+                        _rect,
+                        _getVideoPosition(),
+                        widget.controller.trimStyle,
+                        isTrimming: widget.controller.isTrimming,
+                        isTrimmed: widget.controller.isTrimmed,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            )
           ]));
     });
   }
