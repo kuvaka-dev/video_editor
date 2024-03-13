@@ -17,6 +17,7 @@ class ThumbnailSliderUI extends StatefulWidget {
     super.key,
     required this.controller,
     this.height = 60,
+    this.width = 100,
     this.horizontalMargin = 0.0,
     this.child,
     this.hasHaptic = true,
@@ -32,6 +33,7 @@ class ThumbnailSliderUI extends StatefulWidget {
   ///
   /// Defaults to `60`
   final double height;
+  final double width;
 
   /// The [horizontalMargin] param specifies the horizontal space to set around the slider.
   /// It is important when the trim can be dragged (`controller.maxDuration` < `controller.videoDuration`)
@@ -75,10 +77,10 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
   /// When scrolling the view fast the position can get out of synch
   /// using this param on local change fixes the issue
   double? _preComputedVideoPosition;
-
+  bool showSizeChanger = false;
   Rect _rect = Rect.zero;
   Size _trimLayout = Size.zero;
-  Size _fullLayout = Size.zero;
+  late double fullLayoutWidth = widget.width;
 
   /// Horizontal margin around the [ThumbnailSlider]
   late final double _horizontalMargin =
@@ -135,11 +137,11 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
   /// Returns the [Rect] side position (left or rect) in a range between 0 and 1
   double _getRectToTrim(double rectVal) =>
       (rectVal + _scrollController.offset - _horizontalMargin) /
-      _fullLayout.width;
+      fullLayoutWidth;
 
   /// Convert the controller trim value into the trim slider view size
   double _geTrimToRect(double trimVal) =>
-      (_fullLayout.width * trimVal) + _horizontalMargin;
+      (fullLayoutWidth * trimVal) + _horizontalMargin;
 
   // Distance of sroll bounce on the right
   double get _bounceRightOffset =>
@@ -286,8 +288,19 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
   //--------//
   void _onHorizontalDragStart(DragStartDetails details) {
     final pos = details.localPosition;
-    final progressTrim = getVideoPosition();
+    final progressTrim = _getVideoPosition();
 
+    // Left, right and video progress indicator touch areas
+    Rect leftTouch = Rect.fromCenter(
+      center: Offset(_rect.left - _edgesTouchMargin / 2, _rect.height / 2),
+      width: _edgesTouchMargin,
+      height: _rect.height,
+    );
+    Rect rightTouch = Rect.fromCenter(
+      center: Offset(_rect.right + _edgesTouchMargin / 2, _rect.height / 2),
+      width: _edgesTouchMargin,
+      height: _rect.height,
+    );
     final progressTouch = Rect.fromCenter(
       center: Offset(progressTrim, _rect.height / 2),
       width: _positionTouchMargin,
@@ -304,6 +317,18 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
       if (progressTouch.contains(pos)) {
         // video indicator should have the higher priority since it does not affect the trim param
         _boundary = _TrimBoundaries.progress;
+      } else {
+        // if video indicator is not touched, expand [leftTouch] and [rightTouch] on the inside
+        leftTouch = leftTouch.expandToInclude(
+            Rect.fromLTWH(_rect.left, 0, _edgesTouchMargin, 1));
+        rightTouch = rightTouch.expandToInclude(Rect.fromLTWH(
+            _rect.right - _edgesTouchMargin, 0, _edgesTouchMargin, 1));
+      }
+
+      if (leftTouch.contains(pos)) {
+        _boundary = _TrimBoundaries.left;
+      } else if (rightTouch.contains(pos)) {
+        _boundary = _TrimBoundaries.right;
       }
     }
 
@@ -315,30 +340,49 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
     final posLeft = _rect.topLeft + delta;
 
     switch (_boundary) {
-      case _TrimBoundaries.inside:
-        final pos = details.localPosition.dx;
-        // postion of pos on the layout width between 0 and 1
-        final localRatio = pos / (_trimLayout.width + _horizontalMargin * 2);
-        // because the video progress cursor is on a different layout context (horizontal margin are not applied)
-        // the gesture offset must be adjusted (remove margin when localRatio < 0.5 and add margin when localRatio > 0.5)
-        final localAdjust = (localRatio - 0.5) * (_horizontalMargin * 2);
-        _controllerSeekTo((pos + localAdjust).clamp(
-          _rect.left - _horizontalMargin,
-          _rect.right + _horizontalMargin,
-        ));
+      case _TrimBoundaries.left:
+        final clampLeft = posLeft.dx.clamp(_horizontalMargin, _rect.right);
+        // avoid rect to be out of bounds & avoid minTrim to be bigger than maxTrim
+        _changeTrimRect(
+            left: clampLeft,
+            width: _rect.width - (clampLeft - posLeft.dx).abs() - delta.dx);
         break;
-      case _TrimBoundaries.progress:
-        final pos = details.localPosition.dx;
-        // postion of pos on the layout width between 0 and 1
-        final localRatio = pos / (_trimLayout.width + _horizontalMargin * 2);
-        // because the video progress cursor is on a different layout context (horizontal margin are not applied)
-        // the gesture offset must be adjusted (remove margin when localRatio < 0.5 and add margin when localRatio > 0.5)
-        final localAdjust = (localRatio - 0.5) * (_horizontalMargin * 2);
-        _controllerSeekTo((pos + localAdjust).clamp(
-          _rect.left - _horizontalMargin,
-          _rect.right + _horizontalMargin,
-        ));
+      case _TrimBoundaries.right:
+        // avoid rect to be out of bounds & maxTrim to be smaller than minTrim
+        _changeTrimRect(
+          width: (_rect.left + _rect.width + delta.dx)
+                  .clamp(_rect.left, _trimLayout.width + _horizontalMargin) -
+              _rect.left,
+        );
         break;
+      // case _TrimBoundaries.inside:
+      //   if (_isExtendTrim) {
+      //     _scrollController.position.moveTo(
+      //       _scrollController.offset - delta.dx,
+      //       clamp: false,
+      //     );
+      //   } else {
+      //     // avoid rect to be out of bounds
+      //     _changeTrimRect(
+      //       left: posLeft.dx.clamp(
+      //         _horizontalMargin,
+      //         _trimLayout.width + _horizontalMargin - _rect.width,
+      //       ),
+      //     );
+      //   }
+      //   break;
+      // case _TrimBoundaries.progress:
+      //   final pos = details.localPosition.dx;
+      //   // postion of pos on the layout width between 0 and 1
+      //   final localRatio = pos / (_trimLayout.width + _horizontalMargin * 2);
+      //   // because the video progress cursor is on a different layout context (horizontal margin are not applied)
+      //   // the gesture offset must be adjusted (remove margin when localRatio < 0.5 and add margin when localRatio > 0.5)
+      //   final localAdjust = (localRatio - 0.5) * (_horizontalMargin * 2);
+      //   _controllerSeekTo((pos + localAdjust).clamp(
+      //     _rect.left - _horizontalMargin,
+      //     _rect.right + _horizontalMargin,
+      //   ));
+      //   break;
       default:
         break;
     }
@@ -362,44 +406,53 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
 
     // if [left] and [width] params does not respect the min and max duration set in the controller
     // reduce the trimmed area to respect it
-    final Duration diff = _getDurationDiff(left, width);
-    if (diff < widget.controller.minDuration ||
-        diff > widget.controller.maxDuration) {
-      if (_boundary == _TrimBoundaries.left) {
-        final limitLeft = left.clamp(
-            left +
-                width -
-                _getRectWidthFromDuration(widget.controller.maxDuration),
-            left +
-                width -
-                _getRectWidthFromDuration(widget.controller.minDuration));
-        width += left - limitLeft;
-        left = limitLeft;
-      } else if (_boundary == _TrimBoundaries.right) {
-        width = width.clamp(
-          _getRectWidthFromDuration(widget.controller.minDuration),
-          _getRectWidthFromDuration(widget.controller.maxDuration),
-        );
-      }
-    }
 
-    bool shouldHaptic = _canDoHaptic(left, width);
+    // final Duration diff = _getDurationDiff(left, width);
+    // if (diff < widget.controller.minDuration ||
+    //     diff > widget.controller.maxDuration) {
+    //   if (_boundary == _TrimBoundaries.left) {
+    //     final limitLeft = left.clamp(
+    //         left +
+    //             width -
+    //             _getRectWidthFromDuration(widget.controller.maxDuration),
+    //         left +
+    //             width -
+    //             _getRectWidthFromDuration(widget.controller.minDuration));
+    //     width += left - limitLeft;
+    //     left = limitLeft;
+    //   } else if (_boundary == _TrimBoundaries.right) {
+    //     width = width.clamp(
+    //       _getRectWidthFromDuration(widget.controller.minDuration),
+    //       _getRectWidthFromDuration(widget.controller.maxDuration),
+    //     );
+    //   }
+    // }
 
-    if (updateTrim) {
-      _rect = Rect.fromLTWH(left, _rect.top, width, _rect.height);
-      _updateControllerTrim();
-    } else {
-      setState(
-          () => _rect = Rect.fromLTWH(left!, _rect.top, width!, _rect.height));
-    }
+    // bool shouldHaptic = _canDoHaptic(0, width);
+
+    // if (updateTrim) {
+    //   _rect = Rect.fromLTWH(left, _rect.top, width, _rect.height);
+    //   _updateControllerTrim();
+    // } else {
+    //   setState(
+    //       () => _rect = Rect.fromLTWH(left!, _rect.top, width!, _rect.height));
+    // }
+    setState(() {
+      fullLayoutWidth = width ?? _rect.width;
+      _rect = Rect.fromPoints(
+        Offset(widget.controller.minTrim * fullLayoutWidth, 0.0),
+        Offset(widget.controller.maxTrim * fullLayoutWidth, widget.height),
+      ).shift(Offset(_horizontalMargin, 0));
+    });
+
     // if left edge or right edge is touched, vibrate
-    if (shouldHaptic) HapticFeedback.lightImpact();
+    // if (shouldHaptic) HapticFeedback.lightImpact();
   }
 
   void _createTrimRect() {
     _rect = Rect.fromPoints(
-      Offset(widget.controller.minTrim * _fullLayout.width, 0.0),
-      Offset(widget.controller.maxTrim * _fullLayout.width, widget.height),
+      Offset(widget.controller.minTrim * fullLayoutWidth, 0.0),
+      Offset(widget.controller.maxTrim * fullLayoutWidth, widget.height),
     ).shift(Offset(_horizontalMargin, 0));
   }
 
@@ -432,7 +485,7 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
     _preComputedVideoPosition = null;
     final to = widget.controller.videoDuration *
         ((position + _scrollController.offset) /
-            (_fullLayout.width + _horizontalMargin * 2));
+            (fullLayoutWidth + _horizontalMargin * 2));
     await widget.controller.video.seekTo(
         to > widget.controller.endTrim ? widget.controller.endTrim : to);
   }
@@ -466,13 +519,13 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
   /// NOTE : Using function instead of getter seems faster when grabbing the cursor
   double getVideoPosition() =>
       _preComputedVideoPosition ??
-      (_fullLayout.width * widget.controller.trimPosition -
+      (fullLayoutWidth * widget.controller.trimPosition -
           _scrollController.offset +
           _horizontalMargin);
 
   Duration _getDurationDiff(double left, double width) {
-    final double min = (left - _horizontalMargin) / _fullLayout.width;
-    final double max = (left + width - _horizontalMargin) / _fullLayout.width;
+    final double min = (left - _horizontalMargin) / fullLayoutWidth;
+    final double max = (left + width - _horizontalMargin) / fullLayoutWidth;
     final Duration duration = widget.controller.videoDuration;
     return (duration * max) - (duration * min);
   }
@@ -507,7 +560,7 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
   /// Returns the width of a [Rect] in the slider that should represents the [duration]
   double _getRectWidthFromDuration(Duration duration) =>
       duration > Duration.zero
-          ? _fullLayout.width /
+          ? fullLayoutWidth /
               (widget.controller.videoDuration.inMilliseconds /
                   duration.inMilliseconds)
           : 0.0;
@@ -520,85 +573,143 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
         contrainst.maxWidth - _horizontalMargin * 2,
         contrainst.maxHeight,
       );
-      _fullLayout = Size(
-        trimLayout.width * (_isExtendTrim ? _viewportRatio : 1),
-        contrainst.maxHeight,
-      );
+
       if (_trimLayout != trimLayout) {
         _trimLayout = trimLayout;
         _createTrimRect();
       }
 
-      return SizedBox(
-          width: _fullLayout.width,
-          child: Stack(children: [
-            NotificationListener<ScrollNotification>(
-              onNotification: (scrollNotification) {
-                if (_boundary == null) {
-                  if (scrollNotification is ScrollStartNotification) {
-                    _updateControllerIsTrimming(true);
-                  } else if (scrollNotification is ScrollEndNotification) {
-                    _onHorizontalDragEnd();
-                  }
-                }
-                return true;
+      return showSizeChanger
+          ? GestureDetector(
+              onTap: () {
+                setState(() {
+                  showSizeChanger = false;
+                });
               },
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                physics: const BouncingScrollPhysics(),
-                scrollDirection: Axis.horizontal,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: _horizontalMargin),
-                  child: Column(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(
-                          widget.controller.trimStyle.borderRadius,
-                        ),
-                        child: SizedBox(
-                          height: widget.height,
-                          width: _fullLayout.width,
-                          child: ThumbnailSlider(
-                            controller: widget.controller,
-                            height: widget.height,
+              child: SizedBox(
+                  width: fullLayoutWidth,
+                  child: Stack(children: [
+                    NotificationListener<ScrollNotification>(
+                      onNotification: (scrollNotification) {
+                        if (_boundary == null) {
+                          if (scrollNotification is ScrollStartNotification) {
+                            _updateControllerIsTrimming(true);
+                          } else if (scrollNotification
+                              is ScrollEndNotification) {
+                            _onHorizontalDragEnd();
+                          }
+                        }
+                        return true;
+                      },
+                      child: SingleChildScrollView(
+                        controller: _scrollController,
+                        physics: const BouncingScrollPhysics(),
+                        scrollDirection: Axis.horizontal,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: _horizontalMargin),
+                          child: Column(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                  widget.controller.trimStyle.borderRadius,
+                                ),
+                                child: SizedBox(
+                                  height: widget.height,
+                                  width: fullLayoutWidth,
+                                  child: ThumbnailSlider(
+                                    controller: widget.controller,
+                                    height: widget.height,
+                                  ),
+                                ),
+                              ),
+                              if (widget.child != null)
+                                SizedBox(
+                                    width: fullLayoutWidth, child: widget.child)
+                            ],
                           ),
                         ),
                       ),
-                      if (widget.child != null)
-                        SizedBox(width: _fullLayout.width, child: widget.child)
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            GestureDetector(
-              onHorizontalDragStart: _onHorizontalDragStart,
-              onHorizontalDragUpdate: _onHorizontalDragUpdate,
-              onHorizontalDragEnd: _onHorizontalDragEnd,
-              behavior: HitTestBehavior.opaque,
-              child: AnimatedBuilder(
-                animation: Listenable.merge([
-                  widget.controller,
-                  widget.controller.video,
-                ]),
-                builder: (_, __) {
-                  return RepaintBoundary(
-                    child: CustomPaint(
-                      size: Size.fromHeight(widget.height),
-                      painter: ThumbnailSliderPrinter(
-                        _rect,
-                        getVideoPosition(),
-                        widget.indicatorHeight,
-                        widget.controller.trimStyle,
-                        isTrimming: widget.controller.isTrimming,
-                        isTrimmed: widget.controller.isTrimmed,
+                    ),
+                    GestureDetector(
+                      onHorizontalDragStart: _onHorizontalDragStart,
+                      onHorizontalDragUpdate: _onHorizontalDragUpdate,
+                      onHorizontalDragEnd: _onHorizontalDragEnd,
+                      behavior: HitTestBehavior.opaque,
+                      child: AnimatedBuilder(
+                        animation: Listenable.merge([
+                          widget.controller,
+                          widget.controller.video,
+                        ]),
+                        builder: (_, __) {
+                          return RepaintBoundary(
+                            child: CustomPaint(
+                              size: Size.fromHeight(widget.height),
+                              painter: ThumbnailSliderPrinter(
+                                _rect,
+                                getVideoPosition(),
+                                widget.controller.trimStyle(),
+                                isTrimming: widget.controller.isTrimming,
+                                isTrimmed: widget.controller.isTrimmed,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  ])))
+          : GestureDetector(
+              onTap: () {
+                setState(() {
+                  showSizeChanger = true;
+                });
+              },
+              child: SizedBox(
+                  width: fullLayoutWidth,
+                  child: Stack(children: [
+                    NotificationListener<ScrollNotification>(
+                      onNotification: (scrollNotification) {
+                        if (_boundary == null) {
+                          if (scrollNotification is ScrollStartNotification) {
+                            _updateControllerIsTrimming(true);
+                          } else if (scrollNotification
+                              is ScrollEndNotification) {
+                            _onHorizontalDragEnd();
+                          }
+                        }
+                        return true;
+                      },
+                      child: SingleChildScrollView(
+                        controller: _scrollController,
+                        physics: const BouncingScrollPhysics(),
+                        scrollDirection: Axis.horizontal,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: _horizontalMargin),
+                          child: Column(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                  widget.controller.trimStyle.borderRadius,
+                                ),
+                                child: SizedBox(
+                                  height: widget.height,
+                                  width: fullLayoutWidth,
+                                  child: ThumbnailSlider(
+                                    controller: widget.controller,
+                                    height: widget.height,
+                                  ),
+                                ),
+                              ),
+                              if (widget.child != null)
+                                SizedBox(
+                                    width: fullLayoutWidth, child: widget.child)
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  );
-                },
-              ),
-            )
-          ]));
+                  ])));
     });
   }
 }
