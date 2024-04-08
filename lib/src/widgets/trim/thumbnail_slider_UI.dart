@@ -592,42 +592,30 @@ class ThumbnailSliderUIState extends State<ThumbnailSliderUI>
                   showSizeChanger = !showSizeChanger;
                 });
               },
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (scrollNotification) {
-                  if (_boundary == null) {
-                    if (scrollNotification is ScrollStartNotification) {
-                      _updateControllerIsTrimming(true);
-                    } else if (scrollNotification is ScrollEndNotification) {
-                      _onHorizontalDragEnd();
-                    }
-                  }
-                  return true;
-                },
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  scrollDirection: Axis.horizontal,
-                  child: Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: _horizontalMargin),
-                    child: Column(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(
-                            widget.controller.trimStyle.borderRadius,
-                          ),
-                          child: SizedBox(
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: NeverScrollableScrollPhysics(),
+                scrollDirection: Axis.horizontal,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: _horizontalMargin),
+                  child: Column(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          widget.controller.trimStyle.borderRadius,
+                        ),
+                        child: SizedBox(
+                          height: widget.height,
+                          width: fullLayoutWidth,
+                          child: ThumbnailSlider(
+                            controller: widget.controller,
                             height: widget.height,
-                            width: fullLayoutWidth,
-                            child: ThumbnailSlider(
-                              controller: widget.controller,
-                              height: widget.height,
-                            ),
                           ),
                         ),
-                        if (widget.child != null)
-                          SizedBox(width: fullLayoutWidth, child: widget.child)
-                      ],
-                    ),
+                      ),
+                      if (widget.child != null)
+                        SizedBox(width: fullLayoutWidth, child: widget.child)
+                    ],
                   ),
                 ),
               ),
